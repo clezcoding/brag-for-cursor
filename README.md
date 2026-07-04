@@ -1,12 +1,12 @@
 # brag-for-cursor
 
 ```
-██████╗ ██████╗  █████╗  ██████╗
+███████╗ ███████╗  █████╗  ███████╗
 ██╔══██╗██╔══██╗██╔══██╗██╔════╝
 ██████╔╝██████╔╝███████║██║  ███╗   for Cursor, on macOS
 ██╔══██╗██╔══██╗██╔══██║██║   ██║
 ██████╔╝██║  ██║██║  ██║╚██████╔╝
-╚═════╝ ╚═════╝ ╚═╝  ╚═╝ ╚═════╝
+╚═════╝ ╚═════╝█║  ██╝ ╚═════╝
 ```
 
 **You built it. Now let Cursor brag about it.**
@@ -24,40 +24,43 @@ One shell script, zero manual setup: installs [`/brag`](https://github.com/laten
 
 [`/brag`](https://github.com/latent-spaces/brag) ships as a Claude Code skill. Cursor (2.4+) speaks the same open [Agent Skills](https://cursor.com/docs/skills) standard, so it *can* run `/brag` too — but there's no built-in installer for that path, and getting all the pieces (Node, FFmpeg, the skill itself, and its Hyperframes companion skills) lined up by hand is exactly the kind of yak-shave that a tool about *shipping fast* shouldn't require.
 
-`install-brag-cursor.sh` does the whole thing in one run, with a CLI that doesn't look like it was thrown together in five minutes.
+`brag-cursor.sh` does the whole thing in one run, with a CLI that doesn't look like it was thrown together in five minutes — and a matching uninstaller for when you want it gone.
 
 ## What it actually does
 
-1. **Checks/installs prerequisites** — Xcode Command Line Tools, Homebrew, Node.js 22+, FFmpeg.
-2. **Lets you pick a target**:
+**Install:**
+
+1. Checks/installs prerequisites — Xcode Command Line Tools, Homebrew, Node.js 22+, FFmpeg.
+2. Lets you pick a target:
    - **Project** → `<project>/.cursor/skills/` (this repo only)
    - **Global** → `~/.cursor/skills/` (every Cursor project on the machine)
    - **Both**
-3. **Clones [`latent-spaces/brag`](https://github.com/latent-spaces/brag)** and installs the `/brag` skill to your chosen target(s).
-4. **Installs the Hyperframes companion skills** — a hard dependency of `/brag`'s hand-off step — via `npx hyperframes skills update`, then mirrors the relevant packages into `~/.cursor/skills` (and into the project, if a project target was chosen). See [*the bug we found*](#the-bug-we-found-and-fixed-along-the-way) below for why this isn't a one-liner.
-5. **Drops a `.cursor/rules/brag.mdc` fallback** for Cursor versions predating native Skills support (< 2.4).
-6. **Warms up headless Chrome** and runs `hyperframes doctor` so you know the environment is actually ready before you ever type `/brag`.
-7. **Offers `uv`** (optional — only improves beat-sync precision if you bring your own music track; the built-in fallback works fine without it).
-8. **Offers to store a HeyGen API key** (optional — local rendering needs none).
-9. **Fully uninstalls** everything it placed, on request — with a manifest and a confirmation prompt first.
+3. Clones [`latent-spaces/brag`](https://github.com/latent-spaces/brag) and installs the `/brag` skill to your chosen target(s).
+4. Installs the Hyperframes companion skills — a hard dependency of `/brag`'s hand-off step — via `npx hyperframes skills update`, then mirrors the relevant packages into `~/.cursor/skills` (and into the project, if a project target was chosen). See [*the bug we found*](#the-bug-we-found-and-fixed-along-the-way) below for why this isn't a one-liner.
+5. Drops a `.cursor/rules/brag.mdc` fallback for Cursor versions predating native Skills support (< 2.4).
+6. Warms up headless Chrome and runs `hyperframes doctor` so you know the environment is actually ready before you ever type `/brag`.
+7. Offers `uv` (optional — only improves beat-sync precision if you bring your own music track; the built-in fallback works fine without it).
+8. Offers to store a HeyGen API key (optional — local rendering needs none).
+
+**Uninstall:** removes `/brag` (and, on request, the Hyperframes companion packages) from whichever target(s) you pick, plus the `.cursor/rules/brag.mdc` fallback — with a clear per-item report of what was actually found and removed. Homebrew, Node, FFmpeg, and `uv` are never touched; those belong to your machine, not to this script.
 
 ## Install
 
 ```bash
 git clone https://github.com/clezcoding/brag-for-cursor.git
 cd brag-for-cursor
-chmod +x install-brag-cursor.sh
-./install-brag-cursor.sh
+chmod +x brag-cursor.sh
+./brag-cursor.sh
 ```
 
-That last command drops you into an interactive menu. Prefer to skip straight to a specific target:
+That last command drops you into an interactive menu (install or uninstall, then which target). Prefer to skip straight to the point:
 
 ```bash
-./install-brag-cursor.sh --project              # this project, current directory
-./install-brag-cursor.sh --project /path/to/app  # this project, specific directory
-./install-brag-cursor.sh --global                # every Cursor project on this machine
-./install-brag-cursor.sh --both /path/to/app     # both at once
-./install-brag-cursor.sh -y                      # no prompts (defaults to --project, cwd)
+./brag-cursor.sh install --project              # this project, current directory
+./brag-cursor.sh install --project /path/to/app  # this project, specific directory
+./brag-cursor.sh install --global                # every Cursor project on this machine
+./brag-cursor.sh install --both /path/to/app     # both at once
+./brag-cursor.sh install -y                      # no prompts (defaults to --project, cwd)
 ```
 
 Once it's done, open the project in Cursor and type:
@@ -74,39 +77,33 @@ or steer the tone:
 
 ## Uninstall
 
-Removes exactly what this script installed — nothing more.
-
 ```bash
-./install-brag-cursor.sh --uninstall              # interactive menu
-./install-brag-cursor.sh --uninstall --project
-./install-brag-cursor.sh --uninstall --global
-./install-brag-cursor.sh --uninstall --both
-./install-brag-cursor.sh --uninstall -y           # no prompts, no purge flags
+./brag-cursor.sh uninstall                          # interactive menu
+./brag-cursor.sh uninstall --project
+./brag-cursor.sh uninstall --global
+./brag-cursor.sh uninstall --both /path/to/app
+./brag-cursor.sh uninstall --both --purge -y        # remove everything, no prompts
 ```
 
-It always shows a manifest of what will be deleted and asks for confirmation first (unless you pass `-y`). By default it leaves Homebrew, Node, FFmpeg, and the *shared* global Hyperframes skill store alone — other tools and projects on your machine may depend on those. Opt into removing those too:
+By default it only ever removes `/brag` itself and the `.cursor/rules/brag.mdc` fallback from the target(s) you pick, and it asks before touching anything shared. Two things it will always ask about first (unless you pass `-y`, which answers "no" to both):
 
-```bash
---purge-hyperframes-global   # also remove ~/.claude/skills + ~/.agents/skills (and mirrors) —
-                              # affects every tool/project that reads the shared Hyperframes store
---purge-heygen-key           # also delete ~/.heygen/credentials (shared with the `heygen` CLI)
-```
+- **Hyperframes companion packages** — shared with other tools that might use them; pass `--purge` to remove them too without asking.
+- **`~/.heygen/credentials`** — shared with the standalone `heygen` CLI, if you have it installed; asked separately every time, regardless of `--purge`.
 
 ## All options
 
 | Flag | Effect |
 |---|---|
+| `install` \| `uninstall` | Mode. Default: `install`. |
 | `--project [DIR]` | Target: this project (default directory: cwd) |
 | `--global` | Target: global (`~/.cursor/skills`) |
 | `--both [DIR]` | Both targets at once |
-| `--uninstall` | Switch to uninstall mode |
-| `--purge-hyperframes-global` | *(uninstall)* also remove the shared global Hyperframes skill store |
-| `--purge-heygen-key` | *(uninstall)* also delete `~/.heygen/credentials` |
+| `--purge` | *(uninstall)* also remove the Hyperframes companion skills, no confirmation |
 | `--heygen-key KEY` | *(install)* store a HeyGen API key non-interactively |
-| `-y`, `--yes` | No prompts / no confirmation gates |
+| `-y`, `--yes` | No prompts at all |
 | `-h`, `--help` | Show help |
 
-Safe to run more than once: install is idempotent, uninstall only ever touches what this script itself placed.
+Safe to run more than once: install is idempotent, uninstall only ever touches what this script itself placed (or, with `--purge`, the Hyperframes packages it manages).
 
 ## The bug we found (and fixed) along the way
 
@@ -116,9 +113,9 @@ There is no project-scoped install path in the Hyperframes CLI itself. So this s
 
 - Always runs `npx hyperframes skills update` once, globally (there's no alternative).
 - Explicitly copies the relevant packages (`hyperframes`, `hyperframes-*`, `general-video` — filtered out of the ~20 skills the CLI installs, to skip unrelated ones like `figma` or `motion-graphics`) into `~/.cursor/skills`, regardless of whether Cursor's own mirroring already ran.
-- For a **project** target, copies the same filtered set into the project's `.cursor/skills/` too, so the project is self-contained and doesn't depend on load order or a global side effect.
+- For a **project** target, copies the same filtered set into the project's `.cursor/skills/` too, so the project is self-contained and doesn't depend on install order or a global side effect.
 
-Every step above was verified against a real `npx hyperframes doctor` / `skills update` run, not just the documentation — the docs page is stale, the source code isn't.
+Every step above was verified against a real `npx hyperframes doctor` / `npx hyperframes skills update` run and the upstream source, not just the documentation — the docs page is stale, the source code isn't.
 
 ## Requirements
 
@@ -140,6 +137,8 @@ Installed automatically if missing:
 - [`latent-spaces/brag`](https://github.com/latent-spaces/brag) — the skill this installs.
 - [`heygen-com/hyperframes`](https://github.com/heygen-com/hyperframes) — the video composition engine `/brag` hands off to.
 - [Cursor Agent Skills](https://cursor.com/docs/skills) — the open standard that makes any of this possible outside of Claude Code.
+
+This is an independent, unofficial helper script — not affiliated with latent-spaces, HeyGen, or Cursor.
 
 ## License
 
